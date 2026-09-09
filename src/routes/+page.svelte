@@ -10,7 +10,7 @@
   let context = $state<CanvasRenderingContext2D>();
   let tool = $state<Tool>('brush');
   let brush = $state<Brush>('pen');
-  let colour = $state('#f05b4f');
+  let colour = $state('#ff1938');
   let brushSize = $state(12);
   let isDrawing = $state(false);
   let startPoint = $state<Point | null>(null);
@@ -255,80 +255,71 @@
 
 <svelte:head>
   <title>Canvas Studio</title>
-  <meta name="description" content="A focused browser drawing studio" />
+  <meta name="description" content="Painting / drawing app" />
 </svelte:head>
 
 <main class="studio-shell">
-  <header class="topbar">
-    <a class="brand" href="https://example.com/" aria-label="Canvas Studio home"
-      ><span class="brand-mark">C</span><span>Canvas <em>Studio</em></span></a
-    >
-    <div class="topbar-meta">
-      <span class="live-dot"></span>Local workspace <span class="meta-divider"></span>Untitled
-      canvas
-    </div>
-    <div class="top-actions">
-      <button
-        class="icon-button"
-        aria-label="Undo"
-        title="Undo"
-        onclick={undo}
-        disabled={historyIndex <= 0}>↶</button
-      >
-      <button
-        class="icon-button"
-        aria-label="Redo"
-        title="Redo"
-        onclick={redo}
-        disabled={historyIndex >= history.length - 1}>↷</button
-      >
-      <div class="export-menu">
-        <button class="export-button" onclick={() => download('png')}>Export <span>↓</span></button
-        ><button class="export-webp" onclick={() => download('webp')} aria-label="Export WebP"
-          >WebP</button
-        >
-      </div>
-    </div>
-  </header>
-
   <section class="workspace">
     <aside class="sidebar">
+      <!-- tools -->
       <div class="side-heading"><span>Tools</span></div>
       <div class="tool-grid">
-        {#each tools as item (item.id)}<button
+        {#each tools as item (item.id)}
+          <button
             class:active={tool === item.id}
             class="tool-button"
             onclick={() => (tool = item.id)}
             aria-label={item.label}
             title={item.label}
-            ><span class="tool-icon">{item.icon}</span><span>{item.label}</span></button
-          >{/each}
+          >
+            <span class="tool-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        {/each}
       </div>
+
+      <!-- brushes -->
       <div class="control-section">
         <div class="section-label">Brush type</div>
         <div class="brush-list">
-          {#each brushes as item (item.id)}<button
+          {#each brushes as item (item.id)}
+            <button
               class:active={brush === item.id}
               class="brush-option"
               onclick={() => (brush = item.id)}
-              ><span class="brush-preview {item.id}"></span><span>{item.label}</span></button
-            >{/each}
+            >
+              <span class="brush-preview {item.id}"></span>
+              <span>{item.label}</span>
+            </button>
+          {/each}
         </div>
       </div>
+
+      <!-- size -->
       <div class="control-section size-section">
-        <div class="section-label"><span>Size</span><strong>{brushSize}px</strong></div>
+        <div class="section-label">
+          <span>Size</span>
+          <strong>{brushSize}px</strong>
+        </div>
+
         <input aria-label="Brush size" type="range" min="2" max="60" bind:value={brushSize} />
-        <div class="range-labels"><span>Fine</span><span>Bold</span></div>
+        <div class="range-labels">
+          <span>Fine</span>
+          <span>Bold</span>
+        </div>
       </div>
+
       <div class="control-section colour-section">
         <div class="section-label">Colour</div>
-        <label class="colour-picker" style={`--picked: ${colour}`}
-          ><input aria-label="Brush colour" type="color" bind:value={colour} /><span
-            class="colour-swatch"
-          ></span><span>{colour.toUpperCase()}</span><span class="picker-arrow">⌄</span></label
-        >
+        <label class="colour-picker" style={`--picked: ${colour}`}>
+          <input aria-label="Brush colour" type="color" bind:value={colour} />
+          <span class="colour-swatch"> </span><span>{colour.toUpperCase()}</span>
+          <!-- <span class="picker-arrow">⌄</span> -->
+        </label>
+
+        <!-- colour presets -->
         <div class="swatches">
-          {#each ['#1b1d24', '#f05b4f', '#f6b84b', '#64b5a2', '#5b7cfa', '#f3eee3'] as swatch (swatch)}<button
+          {#each ['#1b1d24', '#ff1938', '#f6b84b', '#64b5a2', '#5b7cfa', '#f3eee3'] as swatch (swatch)}<button
               class:chosen={colour === swatch}
               class="swatch"
               style={`background: ${swatch}`}
@@ -340,13 +331,6 @@
     </aside>
 
     <div class="canvas-column">
-      <div class="canvas-header">
-        <div>
-          <span class="eyebrow">Workspace / 01</span>
-          <h1>Make something <i>real.</i></h1>
-        </div>
-        <span class="canvas-size">{canvasWidth} × {canvasHeight}</span>
-      </div>
       <div class="canvas-shell" bind:this={canvasShell}>
         <canvas
           bind:this={canvas}
@@ -357,6 +341,8 @@
           onpointercancel={endStroke}
           onpointerleave={() => (cursorPreview = null)}
         ></canvas>
+
+        <!-- size preview -->
         {#if cursorPreview && tool !== 'fill'}
           <span
             class="brush-ghost"
@@ -364,16 +350,505 @@
             style={`left: ${cursorPreview.x}px; top: ${cursorPreview.y}px; width: ${cursorPreviewSize}px; height: ${cursorPreviewSize}px`}
           ></span>
         {/if}
-        <div class="canvas-corner top-left"></div>
+        <!-- <div class="canvas-corner top-left"></div>
         <div class="canvas-corner top-right"></div>
         <div class="canvas-corner bottom-left"></div>
-        <div class="canvas-corner bottom-right"></div>
+        <div class="canvas-corner bottom-right"></div> -->
       </div>
       <div class="canvas-footer">
-        <span><b class="status-dot"></b> Ready to draw</span><span
-          >Drag to create · {brushSize}px {brush}</span
-        >
+        <span>{brushSize}px {brush} </span>
+        <span class="canvas-size">{canvasWidth} × {canvasHeight}</span>
       </div>
     </div>
   </section>
+
+  <footer>
+    <div class="footer-actions">
+      <div class="undo-redo">
+        <button
+          class="icon-button"
+          aria-label="Undo"
+          title="Undo"
+          onclick={undo}
+          disabled={historyIndex <= 0}>↶</button
+        >
+        <button
+          class="icon-button"
+          aria-label="Redo"
+          title="Redo"
+          onclick={redo}
+          disabled={historyIndex >= history.length - 1}>↷</button
+        >
+      </div>
+      <div class="export-menu">
+        <button class="export-button" onclick={() => download('png')}>
+          Export <span>↓</span>
+        </button>
+
+        <button class="export-webp" onclick={() => download('webp')} aria-label="Export WebP">
+          WebP
+        </button>
+      </div>
+    </div>
+  </footer>
 </main>
+
+<style>
+  main {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  button,
+  input {
+    font: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  .studio-shell {
+    min-height: 100vh;
+    /* background: var(--background) */
+    background: radial-gradient(circle at 70% 0%, #f8f4ea 0, #e8e5de 48%, #dedbd3 100%);
+  }
+  footer {
+    height: 74px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4vw;
+    border-bottom: 1px solid #d2cfc7;
+    background: rgba(248, 246, 240, 0.72);
+  }
+  /* footer-meta, */
+  .canvas-size,
+  .section-label,
+  .range-labels,
+  .canvas-footer,
+  .footer-key,
+  kbd {
+    font-family: var(--font-roboto-mono);
+    font-size: 10px;
+    letter-spacing: 0.03em;
+  }
+  .footer-actions {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 7px;
+  }
+  .icon-button,
+  .export-button,
+  .export-webp {
+    border: 1px solid #d2cfc7;
+    color: #4a4a47;
+    background: #f8f6f0;
+    height: 34px;
+  }
+  .icon-button {
+    width: 34px;
+    border-radius: 5px;
+    font-size: 20px;
+    line-height: 1;
+  }
+  .icon-button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .export-menu {
+    display: flex;
+    margin-left: 10px;
+  }
+  .export-button {
+    padding: 0 13px;
+    border-radius: 5px 0 0 5px;
+    border-right: 0;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .export-button span {
+    color: #f05b4f;
+    margin-left: 6px;
+    font-size: 16px;
+  }
+  .export-webp {
+    width: 42px;
+    border-radius: 0 5px 5px 0;
+    font-family: var(--font-roboto-mono);
+    font-size: 9px;
+    color: #89867e;
+  }
+  .workspace {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 64px);
+    max-width: 1680px;
+    margin: 0 auto;
+    padding: 38px 3vw 32px;
+  }
+  .sidebar {
+    border-right: 1px solid #d2cfc7;
+    padding-right: 28px;
+    min-height: calc(100vh - 174px);
+    display: flex;
+    flex-direction: column;
+  }
+  .side-heading,
+  .section-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #8a887f;
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+  kbd {
+    color: #aaa79d;
+    border: 1px solid #cbc8bf;
+    padding: 4px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+  }
+  .tool-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-top: 17px;
+  }
+  .tool-button {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 40px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    color: #716f68;
+    background: transparent;
+    text-align: left;
+    font-size: 11px;
+  }
+  .tool-button:hover,
+  .tool-button.active {
+    color: #1b1d24;
+    background: #f5f2eb;
+    border-color: #d7d3ca;
+  }
+  .tool-button.active {
+    box-shadow: inset 3px 0 #f05b4f;
+  }
+  .tool-icon {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    color: #37383c;
+    font-size: 19px;
+    line-height: 1;
+  }
+  .control-section {
+    border-top: 1px solid #d2cfc7;
+    margin-top: 32px;
+    padding-top: 23px;
+  }
+  .brush-list {
+    display: grid;
+    gap: 4px;
+    margin-top: 12px;
+  }
+  .brush-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 32px;
+    padding: 0 5px;
+    border: 0;
+    color: #77766f;
+    background: transparent;
+    font-size: 11px;
+    text-align: left;
+  }
+  .brush-option.active {
+    color: #1b1d24;
+    font-weight: 700;
+  }
+  .brush-preview {
+    width: 35px;
+    height: 10px;
+    display: block;
+    border-radius: 50%;
+    background: #1b1d24;
+  }
+  .brush-preview.pencil {
+    opacity: 0.42;
+    height: 4px;
+  }
+  .brush-preview.spray {
+    width: 35px;
+    height: 15px;
+    background: radial-gradient(#1b1d24 1px, transparent 1.5px);
+    background-size: 5px 5px;
+    opacity: 0.7;
+  }
+  .size-section {
+    margin-top: 28px;
+  }
+  .section-label strong {
+    color: #1b1d24;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  input[type='range'] {
+    width: 100%;
+    margin: 19px 0 4px;
+    accent-color: #f05b4f;
+  }
+  .range-labels {
+    justify-content: space-between;
+    display: flex;
+    color: #aaa69e;
+    font-size: 9px;
+  }
+  .colour-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    margin-top: 12px;
+    padding: 0 9px;
+    border: 1px solid #d2cfc7;
+    border-radius: 5px;
+    background: #f5f2eb;
+    color: #55544f;
+    font-family: var(--font-roboto-mono);
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .colour-picker input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+  }
+  .colour-swatch {
+    width: 17px;
+    height: 17px;
+    border-radius: 3px;
+    background: var(--picked);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+  }
+  .picker-arrow {
+    margin-left: auto;
+    font-size: 15px;
+    color: #9a978f;
+  }
+  .swatches {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 13px;
+  }
+  .swatch {
+    width: 20px;
+    height: 20px;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(27, 29, 36, 0.14);
+  }
+  .swatch.chosen {
+    outline: 2px solid #1b1d24;
+    outline-offset: 2px;
+  }
+  .sidebar-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 28px;
+    color: #858279;
+    font-size: 10px;
+  }
+  .shortcut-key {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #cbc8bf;
+    border-radius: 3px;
+    color: #5f5d57;
+  }
+  .canvas-column {
+    min-width: 0;
+    padding-top: 8px;
+  }
+  .canvas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+  }
+  .canvas-size {
+    color: #a09d94;
+    margin-bottom: 4px;
+  }
+  .canvas-shell {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 1.45;
+    border: 1px solid #d2cfc7;
+    border-radius: 3px;
+    background: #fffdf8;
+    box-shadow: 0 15px 40px rgba(58, 55, 45, 0.08);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .brush-ghost {
+    position: absolute;
+    z-index: 2;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 50%;
+    background: rgba(6, 6, 6, 0.361);
+    pointer-events: none;
+  }
+
+  .canvas-corner {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    pointer-events: none;
+    border-color: #f05b4f;
+  }
+  /* .top-left {
+    top: 10px;
+    left: 10px;
+    border-top: 1px solid;
+    border-left: 1px solid;
+  }
+  .top-right {
+    top: 10px;
+    right: 10px;
+    border-top: 1px solid;
+    border-right: 1px solid;
+  }
+  .bottom-left {
+    bottom: 10px;
+    left: 10px;
+    border-bottom: 1px solid;
+    border-left: 1px solid;
+  }
+  .bottom-right {
+    right: 10px;
+    bottom: 10px;
+    border-right: 1px solid;
+    border-bottom: 1px solid;
+  } */
+  .canvas-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 1px;
+    color: #9a978f;
+    font-size: 9px;
+  }
+  .canvas-footer span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  @media (max-width: 800px) {
+    /* footer {
+      padding: 0 20px;
+    } */
+    /* footer-meta {
+      display: none;
+    } */
+    .workspace {
+      grid-template-columns: 1fr;
+      padding: 32px 20px;
+      gap: 30px;
+    }
+    .sidebar {
+      min-height: auto;
+      border-right: 0;
+      border-bottom: 1px solid #d2cfc7;
+      padding: 0 0 25px;
+    }
+    .sidebar-footer {
+      display: none;
+    }
+    .tool-grid {
+      grid-template-columns: repeat(5, 1fr);
+    }
+    .tool-button {
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px;
+    }
+    .tool-button.active {
+      box-shadow: inset 0 -3px #f05b4f;
+    }
+    .control-section {
+      margin-top: 20px;
+      padding-top: 17px;
+    }
+    .brush-list {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .colour-section,
+    .size-section {
+      display: inline-block;
+      width: 48%;
+      vertical-align: top;
+    }
+    .colour-section {
+      margin-left: 3%;
+    }
+    .canvas-header {
+      margin-top: 0;
+    }
+  }
+
+  @media (max-width: 500px) {
+    .icon-button {
+      display: none;
+    }
+    .export-menu {
+      margin-left: 0;
+    }
+    .export-button {
+      padding: 0 9px;
+    }
+    .workspace {
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+    .canvas-header {
+      display: block;
+    }
+    .canvas-size {
+      display: block;
+      margin-top: 13px;
+    }
+    .tool-grid {
+      gap: 2px;
+    }
+    .tool-button {
+      font-size: 9px;
+    }
+    .tool-icon {
+      font-size: 17px;
+    }
+  }
+</style>
