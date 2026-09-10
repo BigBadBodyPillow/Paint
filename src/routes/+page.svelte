@@ -5,6 +5,8 @@
   type Brush = 'pen' | 'pencil' | 'spray';
   type Point = { x: number; y: number };
 
+  const canvasBackground = 'rgb(14, 14, 14)';
+
   let canvas = $state<HTMLCanvasElement>();
   let canvasShell = $state<HTMLDivElement>();
   let context = $state<CanvasRenderingContext2D>();
@@ -43,29 +45,34 @@
 
   onMount(() => {
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    // window.addEventListener('resize', resizeCanvas);
+    // return () => window.removeEventListener('resize', resizeCanvas);
   });
 
   function resizeCanvas() {
     if (!canvas || !canvasShell) return;
+
     const rect = canvasShell.getBoundingClientRect();
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const previousCanvas = document.createElement('canvas');
     const hadDrawing = canvas.width > 0 && canvas.height > 0 && historyIndex >= 0;
+
     if (hadDrawing) {
       previousCanvas.width = canvas.width;
       previousCanvas.height = canvas.height;
       previousCanvas.getContext('2d')?.drawImage(canvas, 0, 0);
     }
+
     canvasWidth = Math.max(320, Math.floor(rect.width * ratio));
     canvasHeight = Math.max(260, Math.floor(rect.height * ratio));
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     context = canvas.getContext('2d') ?? undefined;
+
     if (!context) return;
-    context.fillStyle = '#fffdf8';
+    context.fillStyle = canvasBackground;
     context.fillRect(0, 0, canvasWidth, canvasHeight);
+
     if (hadDrawing) context.drawImage(previousCanvas, 0, 0, canvasWidth, canvasHeight);
     history = [context.getImageData(0, 0, canvasWidth, canvasHeight)];
     historyIndex = 0;
@@ -73,6 +80,7 @@
 
   function pointFromEvent(event: PointerEvent): Point {
     const rect = canvas!.getBoundingClientRect();
+
     return {
       x: ((event.clientX - rect.left) / rect.width) * canvas!.width,
       y: ((event.clientY - rect.top) / rect.height) * canvas!.height
@@ -81,35 +89,45 @@
 
   function trackPointer(event: PointerEvent) {
     if (!canvas) return;
+
     const rect = canvas.getBoundingClientRect();
+
     cursorPreview = { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
   function beginStroke(event: PointerEvent) {
     if (!context || !canvas) return;
+
     trackPointer(event);
     canvas.setPointerCapture(event.pointerId);
+
     const point = pointFromEvent(event);
+
     if (tool === 'fill') {
       floodFill(Math.floor(point.x), Math.floor(point.y));
       saveHistory();
       return;
     }
+
     isDrawing = true;
     startPoint = point;
     shapeOrigin = point;
     snapshot = context.getImageData(0, 0, canvas.width, canvas.height);
+
     if (tool === 'brush') drawBrush(point, point);
   }
 
   function drawStroke(event: PointerEvent) {
     if (!isDrawing || !context || !startPoint) return;
+
     const point = pointFromEvent(event);
+
     if (tool === 'brush') drawBrush(startPoint, point);
     else if (shapeOrigin) {
       if (snapshot) context.putImageData(snapshot, 0, 0);
       drawShape(shapeOrigin, point);
     }
+
     if (tool === 'brush') startPoint = point;
   }
 
@@ -120,16 +138,20 @@
 
   function endStroke(event: PointerEvent) {
     if (!isDrawing || !canvas) return;
+
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+
     isDrawing = false;
     startPoint = null;
     shapeOrigin = null;
     snapshot = null;
+
     saveHistory();
   }
 
   function prepareStroke() {
     if (!context) return;
+
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.strokeStyle = colour;
@@ -140,13 +162,17 @@
 
   function drawBrush(from: Point, to: Point) {
     if (!context) return;
+
     prepareStroke();
+
     if (brush === 'spray') {
       const density = Math.max(18, brushSize * 2);
       context.globalAlpha = 0.32;
+
       for (let i = 0; i < density; i += 1) {
         const angle = Math.random() * Math.PI * 2;
         const radius = Math.random() * brushSize * 2.1;
+
         context.fillRect(
           to.x + Math.cos(angle) * radius,
           to.y + Math.sin(angle) * radius,
@@ -156,6 +182,7 @@
       }
       return;
     }
+
     context.beginPath();
     context.moveTo(from.x, from.y);
     context.lineTo(to.x, to.y);
@@ -164,9 +191,11 @@
 
   function drawShape(from: Point, to: Point) {
     if (!context) return;
+
     prepareStroke();
     context.globalAlpha = 1;
     context.beginPath();
+
     if (tool === 'line') {
       context.moveTo(from.x, from.y);
       context.lineTo(to.x, to.y);
@@ -181,17 +210,20 @@
 
   function floodFill(startX: number, startY: number) {
     if (!context) return;
+
     const image = context.getImageData(0, 0, canvasWidth, canvasHeight);
     const pixels = image.data;
     const index = (startY * canvasWidth + startX) * 4;
     const target = [pixels[index], pixels[index + 1], pixels[index + 2], pixels[index + 3]];
     const replacement = hexToRgb(colour);
+
     if (
       target[0] === replacement[0] &&
       target[1] === replacement[1] &&
       target[2] === replacement[2]
     )
       return;
+
     const tolerance = 48;
     const matchesTarget = (pixel: number) =>
       Math.abs(pixels[pixel] - target[0]) <= tolerance &&
@@ -199,10 +231,14 @@
       Math.abs(pixels[pixel + 2] - target[2]) <= tolerance &&
       Math.abs(pixels[pixel + 3] - target[3]) <= tolerance;
     const stack: Point[] = [{ x: startX, y: startY }];
+
     while (stack.length) {
       const point = stack.pop()!;
+
       if (point.x < 0 || point.x >= canvasWidth || point.y < 0 || point.y >= canvasHeight) continue;
+
       const current = (point.y * canvasWidth + point.x) * 4;
+
       if (!matchesTarget(current)) continue;
       pixels[current] = replacement[0];
       pixels[current + 1] = replacement[1];
@@ -225,6 +261,7 @@
 
   function saveHistory() {
     if (!context) return;
+
     history = [
       ...history.slice(0, historyIndex + 1),
       context.getImageData(0, 0, canvasWidth, canvasHeight)
@@ -234,19 +271,23 @@
 
   function undo() {
     if (!context || historyIndex <= 0) return;
+
     historyIndex -= 1;
     context.putImageData(history[historyIndex], 0, 0);
   }
 
   function redo() {
     if (!context || historyIndex >= history.length - 1) return;
+
     historyIndex += 1;
     context.putImageData(history[historyIndex], 0, 0);
   }
 
   function download(format: 'png' | 'webp') {
     if (!canvas) return;
+
     const link = document.createElement('a');
+
     link.download = `canvas-${new Date().toISOString().slice(0, 10)}.${format}`;
     link.href = canvas.toDataURL(`image/${format}`, 0.92);
     link.click();
@@ -259,6 +300,35 @@
 </svelte:head>
 
 <main class="studio-shell">
+  <header>
+    <div class="footer-actions">
+      <div class="undo-redo">
+        <button
+          class="icon-button"
+          aria-label="Undo"
+          title="Undo"
+          onclick={undo}
+          disabled={historyIndex <= 0}>↶</button
+        >
+        <button
+          class="icon-button"
+          aria-label="Redo"
+          title="Redo"
+          onclick={redo}
+          disabled={historyIndex >= history.length - 1}>↷</button
+        >
+      </div>
+      <div class="export-menu">
+        <button class="export-button" onclick={() => download('png')}>
+          Export <span>↓</span>
+        </button>
+
+        <button class="export-webp" onclick={() => download('webp')} aria-label="Export WebP">
+          WebP
+        </button>
+      </div>
+    </div>
+  </header>
   <section class="workspace">
     <aside class="sidebar">
       <!-- tools -->
@@ -303,10 +373,10 @@
         </div>
 
         <input aria-label="Brush size" type="range" min="2" max="60" bind:value={brushSize} />
-        <div class="range-labels">
+        <!-- <div class="range-labels">
           <span>Fine</span>
           <span>Bold</span>
-        </div>
+        </div> -->
       </div>
 
       <div class="control-section colour-section">
@@ -350,10 +420,10 @@
             style={`left: ${cursorPreview.x}px; top: ${cursorPreview.y}px; width: ${cursorPreviewSize}px; height: ${cursorPreviewSize}px`}
           ></span>
         {/if}
-        <!-- <div class="canvas-corner top-left"></div>
+        <div class="canvas-corner top-left"></div>
         <div class="canvas-corner top-right"></div>
         <div class="canvas-corner bottom-left"></div>
-        <div class="canvas-corner bottom-right"></div> -->
+        <div class="canvas-corner bottom-right"></div>
       </div>
       <div class="canvas-footer">
         <span>{brushSize}px {brush} </span>
@@ -361,36 +431,6 @@
       </div>
     </div>
   </section>
-
-  <footer>
-    <div class="footer-actions">
-      <div class="undo-redo">
-        <button
-          class="icon-button"
-          aria-label="Undo"
-          title="Undo"
-          onclick={undo}
-          disabled={historyIndex <= 0}>↶</button
-        >
-        <button
-          class="icon-button"
-          aria-label="Redo"
-          title="Redo"
-          onclick={redo}
-          disabled={historyIndex >= history.length - 1}>↷</button
-        >
-      </div>
-      <div class="export-menu">
-        <button class="export-button" onclick={() => download('png')}>
-          Export <span>↓</span>
-        </button>
-
-        <button class="export-webp" onclick={() => download('webp')} aria-label="Export WebP">
-          WebP
-        </button>
-      </div>
-    </div>
-  </footer>
 </main>
 
 <style>
@@ -398,6 +438,11 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+
+    --border: hsl(from var(--background) h s calc(l + 13));
+    --background-muted1: hsl(from var(--background) h s calc(l + 4));
+    --background-muted2: hsl(from var(--background) h s calc(l + 14));
+    --disabled: hsl(from var(--text) h s calc(l - 50));
   }
   button,
   input {
@@ -408,25 +453,23 @@
   }
   .studio-shell {
     min-height: 100vh;
-    /* background: var(--background) */
-    background: radial-gradient(circle at 70% 0%, #f8f4ea 0, #e8e5de 48%, #dedbd3 100%);
   }
-  footer {
+  header {
     height: 74px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 4vw;
-    border-bottom: 1px solid #d2cfc7;
-    background: rgba(248, 246, 240, 0.72);
+    border-bottom: 1px solid var(--border);
+    background: var(--background-muted1);
   }
   /* footer-meta, */
   .canvas-size,
   .section-label,
-  .range-labels,
+  /* .range-labels, */
   .canvas-footer,
-  .footer-key,
-  kbd {
+  .footer-key
+  /*, kbd */ {
     font-family: var(--font-roboto-mono);
     font-size: 10px;
     letter-spacing: 0.03em;
@@ -441,9 +484,9 @@
   .icon-button,
   .export-button,
   .export-webp {
-    border: 1px solid #d2cfc7;
-    color: #4a4a47;
-    background: #f8f6f0;
+    border: 1px solid hsl(from var(--border) h s calc(l + 20));
+    color: var(--text);
+    background: var(--background-muted2);
     height: 34px;
   }
   .icon-button {
@@ -468,7 +511,7 @@
     font-weight: 700;
   }
   .export-button span {
-    color: #f05b4f;
+    color: var(--accent);
     margin-left: 6px;
     font-size: 16px;
   }
@@ -477,7 +520,7 @@
     border-radius: 0 5px 5px 0;
     font-family: var(--font-roboto-mono);
     font-size: 9px;
-    color: #89867e;
+    color: var(--disabled);
   }
   .workspace {
     width: 100%;
@@ -489,7 +532,7 @@
     padding: 38px 3vw 32px;
   }
   .sidebar {
-    border-right: 1px solid #d2cfc7;
+    border-right: 1px solid var(--border);
     padding-right: 28px;
     min-height: calc(100vh - 174px);
     display: flex;
@@ -500,19 +543,19 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #8a887f;
+    color: var(--disabled);
     text-transform: uppercase;
     font-weight: 500;
     font-size: 10px;
     letter-spacing: 0.12em;
   }
-  kbd {
+  /* kbd {
     color: #aaa79d;
     border: 1px solid #cbc8bf;
     padding: 4px 6px;
     border-radius: 3px;
     font-size: 9px;
-  }
+  } */
   .tool-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -527,30 +570,33 @@
     padding: 0 10px;
     border: 1px solid transparent;
     border-radius: 5px;
-    color: #716f68;
+    color: var(--text);
     background: transparent;
     text-align: left;
-    font-size: 11px;
+    font-size: var(--font-12);
+
+    transition: all 0.2s linear;
   }
-  .tool-button:hover,
+  /* .tool-button:hover, */
   .tool-button.active {
-    color: #1b1d24;
-    background: #f5f2eb;
-    border-color: #d7d3ca;
+    background: var(--accent);
+    border-color: var(--border);
+    /* font-weight: 700; */
+    /* letter-spacing: 0.1em; */
   }
   .tool-button.active {
-    box-shadow: inset 3px 0 #f05b4f;
+    box-shadow: inset 3px 0 var(--text);
   }
   .tool-icon {
     display: grid;
     place-items: center;
     width: 22px;
-    color: #37383c;
-    font-size: 19px;
+    color: var(--text);
+    font-size: var(--font-18);
     line-height: 1;
   }
   .control-section {
-    border-top: 1px solid #d2cfc7;
+    border-top: 1px solid var(--border);
     margin-top: 32px;
     padding-top: 23px;
   }
@@ -566,21 +612,25 @@
     height: 32px;
     padding: 0 5px;
     border: 0;
-    color: #77766f;
+    color: var(--text);
     background: transparent;
-    font-size: 11px;
+    font-size: var(--font-12);
     text-align: left;
+
+    transition: all 0.2s linear;
   }
   .brush-option.active {
-    color: #1b1d24;
+    color: hsl(from var(--background) h s calc(l + 44));
+    /* opacity: 0.6; */
     font-weight: 700;
+    letter-spacing: 0.1em;
   }
   .brush-preview {
     width: 35px;
     height: 10px;
     display: block;
     border-radius: 50%;
-    background: #1b1d24;
+    background: var(--text);
   }
   .brush-preview.pencil {
     opacity: 0.42;
@@ -589,7 +639,7 @@
   .brush-preview.spray {
     width: 35px;
     height: 15px;
-    background: radial-gradient(#1b1d24 1px, transparent 1.5px);
+    background: radial-gradient(var(--text) 1px, transparent 1.5px);
     background-size: 5px 5px;
     opacity: 0.7;
   }
@@ -597,7 +647,7 @@
     margin-top: 28px;
   }
   .section-label strong {
-    color: #1b1d24;
+    color: var(--disabled);
     font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
@@ -605,14 +655,15 @@
   input[type='range'] {
     width: 100%;
     margin: 19px 0 4px;
-    accent-color: #f05b4f;
+    accent-color: var(--accent);
   }
-  .range-labels {
+
+  /* .range-labels {
     justify-content: space-between;
     display: flex;
-    color: #aaa69e;
+    color: var(--disabled);
     font-size: 9px;
-  }
+  } */
   .colour-picker {
     display: flex;
     align-items: center;
@@ -620,12 +671,13 @@
     height: 38px;
     margin-top: 12px;
     padding: 0 9px;
-    border: 1px solid #d2cfc7;
+    border: 1px solid var(--border);
     border-radius: 5px;
-    background: #f5f2eb;
-    color: #55544f;
+    background: var(--background-muted1);
+    color: var(--picked);
     font-family: var(--font-roboto-mono);
-    font-size: 10px;
+    font-size: var(--font-10);
+    letter-spacing: 0.2em;
     cursor: pointer;
   }
   .colour-picker input {
@@ -640,11 +692,11 @@
     background: var(--picked);
     border: 1px solid rgba(0, 0, 0, 0.12);
   }
-  .picker-arrow {
+  /* .picker-arrow {
     margin-left: auto;
     font-size: 15px;
     color: #9a978f;
-  }
+  } */
   .swatches {
     display: flex;
     justify-content: space-between;
@@ -658,10 +710,10 @@
     box-shadow: inset 0 0 0 1px rgba(27, 29, 36, 0.14);
   }
   .swatch.chosen {
-    outline: 2px solid #1b1d24;
+    outline: 2px solid var(--border);
     outline-offset: 2px;
   }
-  .sidebar-footer {
+  /* .sidebar-footer {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -669,8 +721,8 @@
     padding-top: 28px;
     color: #858279;
     font-size: 10px;
-  }
-  .shortcut-key {
+  } */
+  /* .shortcut-key {
     display: grid;
     place-items: center;
     width: 20px;
@@ -678,7 +730,7 @@
     border: 1px solid #cbc8bf;
     border-radius: 3px;
     color: #5f5d57;
-  }
+  } */
   .canvas-column {
     min-width: 0;
     padding-top: 8px;
@@ -690,7 +742,7 @@
     margin-bottom: 24px;
   }
   .canvas-size {
-    color: #a09d94;
+    color: var(--disabled);
     margin-bottom: 4px;
   }
   .canvas-shell {
@@ -698,10 +750,11 @@
     overflow: hidden;
     width: 100%;
     aspect-ratio: 1.45;
-    border: 1px solid #d2cfc7;
+    max-height: 800px;
+    border: 1px solid var(--border);
     border-radius: 3px;
-    background: #fffdf8;
-    box-shadow: 0 15px 40px rgba(58, 55, 45, 0.08);
+    background: var(--background-muted2);
+    box-shadow: 0 15px 40px rgba(234, 233, 230, 0.08);
   }
 
   canvas {
@@ -727,9 +780,9 @@
     width: 13px;
     height: 13px;
     pointer-events: none;
-    border-color: #f05b4f;
+    color: var(--accent);
   }
-  /* .top-left {
+  .top-left {
     top: 10px;
     left: 10px;
     border-top: 1px solid;
@@ -752,12 +805,12 @@
     bottom: 10px;
     border-right: 1px solid;
     border-bottom: 1px solid;
-  } */
+  }
   .canvas-footer {
     display: flex;
     justify-content: space-between;
     padding: 14px 1px;
-    color: #9a978f;
+    color: var(--disabled);
     font-size: 9px;
   }
   .canvas-footer span {
@@ -767,12 +820,6 @@
   }
 
   @media (max-width: 800px) {
-    /* footer {
-      padding: 0 20px;
-    } */
-    /* footer-meta {
-      display: none;
-    } */
     .workspace {
       grid-template-columns: 1fr;
       padding: 32px 20px;
@@ -781,7 +828,7 @@
     .sidebar {
       min-height: auto;
       border-right: 0;
-      border-bottom: 1px solid #d2cfc7;
+      border-bottom: 1px solid var(--border);
       padding: 0 0 25px;
     }
     .sidebar-footer {
@@ -797,23 +844,22 @@
       padding: 5px;
     }
     .tool-button.active {
-      box-shadow: inset 0 -3px #f05b4f;
+      box-shadow: inset 0 -3px rgb(255, 255, 255);
     }
     .control-section {
       margin-top: 20px;
       padding-top: 17px;
+      width: 100%;
+      padding-inline: 1em;
+    }
+    .colour-section {
+      margin-left: 0;
+    }
+    .swatches {
+      padding-inline: 1em;
     }
     .brush-list {
       grid-template-columns: repeat(3, 1fr);
-    }
-    .colour-section,
-    .size-section {
-      display: inline-block;
-      width: 48%;
-      vertical-align: top;
-    }
-    .colour-section {
-      margin-left: 3%;
     }
     .canvas-header {
       margin-top: 0;
@@ -821,9 +867,6 @@
   }
 
   @media (max-width: 500px) {
-    .icon-button {
-      display: none;
-    }
     .export-menu {
       margin-left: 0;
     }
@@ -837,6 +880,7 @@
     .canvas-header {
       display: block;
     }
+
     .canvas-size {
       display: block;
       margin-top: 13px;
