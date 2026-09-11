@@ -2,13 +2,14 @@
   import { onMount } from 'svelte';
 
   type Tool = 'brush' | 'line' | 'rectangle' | 'circle' | 'fill';
-  type Brush = 'pen' | 'pencil' | 'spray';
+  type Brush = 'pen' | 'chalk' | 'spray';
   type Point = { x: number; y: number };
 
   const canvasBackground = 'rgb(14, 14, 14)';
 
   let canvas = $state<HTMLCanvasElement>();
   let canvasShell = $state<HTMLDivElement>();
+  let clearDialog = $state<HTMLDialogElement>();
   let context = $state<CanvasRenderingContext2D>();
   let tool = $state<Tool>('brush');
   let brush = $state<Brush>('pen');
@@ -20,6 +21,7 @@
   let snapshot = $state<ImageData | null>(null);
   let history = $state<ImageData[]>([]);
   let historyIndex = $state(-1);
+  let savedColours = $state<string[]>([]);
   let canvasWidth = $state(1200);
   let canvasHeight = $state(760);
   let cursorPreview = $state<{ x: number; y: number } | null>(null);
@@ -39,11 +41,27 @@
 
   const brushes: { id: Brush; label: string }[] = [
     { id: 'pen', label: 'Pen' },
-    { id: 'pencil', label: 'Pencil' },
+    { id: 'chalk', label: 'Chalk' },
     { id: 'spray', label: 'Spray can' }
   ];
 
   onMount(() => {
+    const storedColours = localStorage.getItem('canvas-studio-colours');
+
+    if (storedColours) {
+      try {
+        const parsedColours = JSON.parse(storedColours);
+
+        if (Array.isArray(parsedColours)) {
+          savedColours = parsedColours.filter(
+            (value): value is string => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)
+          );
+        }
+      } catch {
+        localStorage.removeItem('canvas-studio-colours');
+      }
+    }
+
     resizeCanvas();
     // window.addEventListener('resize', resizeCanvas);
     // return () => window.removeEventListener('resize', resizeCanvas);
@@ -133,7 +151,10 @@
 
   function handlePointerMove(event: PointerEvent) {
     trackPointer(event);
-    drawStroke(event);
+
+    for (const coalescedEvent of event.getCoalescedEvents?.() ?? [event]) {
+      drawStroke(coalescedEvent);
+    }
   }
 
   function endStroke(event: PointerEvent) {
@@ -157,7 +178,9 @@
     context.strokeStyle = colour;
     context.fillStyle = colour;
     context.lineWidth = brushSize;
-    context.globalAlpha = brush === 'pencil' ? 0.46 : 1;
+    context.globalAlpha = brush === 'chalk' ? 0.46 : 1;
+
+    if (brush === 'chalk') context.lineCap = 'butt';
   }
 
   function drawBrush(from: Point, to: Point) {
@@ -269,6 +292,32 @@
     historyIndex = history.length - 1;
   }
 
+  function openClearDialog() {
+    clearDialog?.showModal();
+  }
+
+  function clearCanvas() {
+    if (!context) return;
+
+    context.fillStyle = canvasBackground;
+    context.globalAlpha = 1;
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
+    saveHistory();
+    clearDialog?.close();
+  }
+
+  function saveColour() {
+    if (savedColours.includes(colour)) return;
+
+    savedColours = [...savedColours, colour];
+    localStorage.setItem('canvas-studio-colours', JSON.stringify(savedColours));
+  }
+
+  function removeSavedColour(savedColour: string) {
+    savedColours = savedColours.filter((value) => value !== savedColour);
+    localStorage.setItem('canvas-studio-colours', JSON.stringify(savedColours));
+  }
+
   function undo() {
     if (!context || historyIndex <= 0) return;
 
@@ -302,21 +351,24 @@
 <main class="studio-shell">
   <header>
     <div class="footer-actions">
-      <div class="undo-redo">
-        <button
-          class="icon-button"
-          aria-label="Undo"
-          title="Undo"
-          onclick={undo}
-          disabled={historyIndex <= 0}>↶</button
-        >
-        <button
-          class="icon-button"
-          aria-label="Redo"
-          title="Redo"
-          onclick={redo}
-          disabled={historyIndex >= history.length - 1}>↷</button
-        >
+      <div class="undo-redo-clear">
+        <div class="undo-redo">
+          <button
+            class="icon-button"
+            aria-label="Undo"
+            title="Undo"
+            onclick={undo}
+            disabled={historyIndex <= 0}>↶</button
+          >
+          <button
+            class="icon-button"
+            aria-label="Redo"
+            title="Redo"
+            onclick={redo}
+            disabled={historyIndex >= history.length - 1}>↷</button
+          >
+        </div>
+        <button class="clear-button" onclick={openClearDialog}>Clear</button>
       </div>
       <div class="export-menu">
         <button class="export-button" onclick={() => download('png')}>
@@ -397,6 +449,33 @@
               onclick={() => (colour = swatch)}
             ></button>{/each}
         </div>
+
+        <button class="save-colour" onclick={saveColour}>Save colour</button>
+
+        {#if savedColours.length > 0}
+          <div class="saved-colours" aria-label="Saved colours">
+            {#each savedColours as savedColour (savedColour)}
+              <div class="saved-colour">
+                <button
+                  class="saved-swatch"
+                  class:chosen={colour === savedColour}
+                  style={`background: ${savedColour}`}
+                  aria-label={`Use saved colour ${savedColour}`}
+                  title={savedColour.toUpperCase()}
+                  onclick={() => (colour = savedColour)}
+                ></button>
+                {#if colour === savedColour}
+                  <button
+                    class="remove-colour"
+                    aria-label={`Remove saved colour ${savedColour}`}
+                    title="Remove saved colour"
+                    onclick={() => removeSavedColour(savedColour)}>&times;</button
+                  >
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
       </div>
     </aside>
 
@@ -431,6 +510,18 @@
       </div>
     </div>
   </section>
+
+  <dialog bind:this={clearDialog} class="clear-dialog">
+    <form method="dialog" onsubmit={(event) => event.preventDefault()}>
+      <p>Clear the entire canvas?</p>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-cancel" onclick={() => clearDialog?.close()}
+          >Cancel</button
+        >
+        <button type="button" class="dialog-confirm" onclick={clearCanvas}>Clear</button>
+      </div>
+    </form>
+  </dialog>
 </main>
 
 <style>
@@ -473,6 +564,7 @@
     font-family: var(--font-roboto-mono);
     font-size: 10px;
     letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
   }
   .footer-actions {
     width: 100%;
@@ -480,6 +572,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 7px;
+  }
+  .undo-redo-clear {
+    display: flex;
+    align-items: inherit;
+    gap: inherit;
   }
   .icon-button,
   .export-button,
@@ -491,9 +588,23 @@
   }
   .icon-button {
     width: 34px;
-    border-radius: 5px;
+    border-radius: var(--radius);
     font-size: 20px;
     line-height: 1;
+  }
+  .clear-button,
+  .save-colour,
+  .dialog-cancel,
+  .dialog-confirm {
+    border: 1px solid hsl(from var(--border) h s calc(l + 20));
+    border-radius: var(--radius);
+    color: var(--text);
+    background: var(--background-muted2);
+    font-size: var(--font-12);
+  }
+  .clear-button {
+    height: 34px;
+    padding: 0 12px;
   }
   .icon-button:disabled {
     opacity: 0.35;
@@ -505,7 +616,7 @@
   }
   .export-button {
     padding: 0 13px;
-    border-radius: 5px 0 0 5px;
+    border-radius: var(--radius) 0 0 var(--radius);
     border-right: 0;
     font-size: 12px;
     font-weight: 700;
@@ -517,7 +628,7 @@
   }
   .export-webp {
     width: 42px;
-    border-radius: 0 5px 5px 0;
+    border-radius: 0 var(--radius) var(--radius) 0;
     font-family: var(--font-roboto-mono);
     font-size: 9px;
     color: var(--disabled);
@@ -569,7 +680,7 @@
     min-height: 40px;
     padding: 0 10px;
     border: 1px solid transparent;
-    border-radius: 5px;
+    border-radius: var(--radius);
     color: var(--text);
     background: transparent;
     text-align: left;
@@ -629,16 +740,33 @@
     width: 35px;
     height: 10px;
     display: block;
-    border-radius: 50%;
+    border-radius: 16px;
     background: var(--text);
   }
-  .brush-preview.pencil {
-    opacity: 0.42;
-    height: 4px;
+  .brush-preview.chalk {
+    width: 35px;
+    height: 12px;
+    border-radius: 45%;
+    opacity: 0.82;
+    background:
+      radial-gradient(circle at 12% 45%, var(--text) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 31% 65%, var(--text) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 48% 35%, var(--text) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 67% 58%, var(--text) 0 1px, transparent 1.5px),
+      radial-gradient(circle at 86% 42%, var(--text) 0 1px, transparent 1.5px),
+      linear-gradient(to bottom, hsl(from var(--text) h s calc(l - 28)), var(--text));
+    background-size:
+      8px 8px,
+      9px 9px,
+      7px 7px,
+      10px 10px,
+      8px 8px,
+      100% 100%;
   }
   .brush-preview.spray {
     width: 35px;
     height: 15px;
+    border-radius: 400%;
     background: radial-gradient(var(--text) 1px, transparent 1.5px);
     background-size: 5px 5px;
     opacity: 0.7;
@@ -672,7 +800,7 @@
     margin-top: 12px;
     padding: 0 9px;
     border: 1px solid var(--border);
-    border-radius: 5px;
+    border-radius: var(--radius);
     background: var(--background-muted1);
     color: var(--picked);
     font-family: var(--font-roboto-mono);
@@ -713,6 +841,77 @@
     outline: 2px solid var(--border);
     outline-offset: 2px;
   }
+  .save-colour {
+    width: 100%;
+    height: 30px;
+    margin-top: 15px;
+  }
+  .saved-colours {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .saved-colour {
+    position: relative;
+  }
+  .saved-swatch {
+    width: 23px;
+    height: 23px;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(27, 29, 36, 0.14);
+  }
+  .saved-swatch.chosen {
+    outline: 2px solid var(--border);
+    outline-offset: 2px;
+  }
+  .remove-colour {
+    position: absolute;
+    top: -8px;
+    right: -7px;
+    display: grid;
+    place-items: center;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text);
+    background: var(--background-muted2);
+    font-size: 11px;
+    line-height: 0;
+  }
+  .clear-dialog {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    color: var(--text);
+    background: var(--background-muted1);
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.3);
+    margin: auto;
+  }
+  .clear-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .clear-dialog p {
+    margin: 0 0 20px;
+    font-size: var(--font-16);
+  }
+  .dialog-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .dialog-cancel,
+  .dialog-confirm {
+    height: 32px;
+    padding: 0 12px;
+  }
+  .dialog-confirm {
+    color: var(--text-invert);
+    background: var(--accent);
+  }
   /* .sidebar-footer {
     display: flex;
     align-items: center;
@@ -752,9 +951,9 @@
     aspect-ratio: 1.45;
     max-height: 800px;
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--radius);
     background: var(--background-muted2);
-    box-shadow: 0 15px 40px rgba(234, 233, 230, 0.08);
+    box-shadow: 0 15px 40px rgba(95, 94, 93, 0.08);
   }
 
   canvas {

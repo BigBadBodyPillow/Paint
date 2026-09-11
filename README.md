@@ -13,8 +13,7 @@
 
 ## Todo
 
-- [ ] Add clear button
+- [x] Add clear button
 - [x] Theming
-- [x] 800px max canvas height
-- [ ] Save colours
-- [ ] update canvas dimension indicator when zooming
+- [x] Save colours
+- [ ] Fix brush type not working with tools
