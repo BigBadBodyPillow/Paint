@@ -10,10 +10,12 @@
 - Fill or paint bucket tool that fills in a closed off space with a colour
 - Undo and redo
 - Save image as png or webp
+- Save colours
 
 ## Todo
 
 - [x] Add clear button
 - [x] Theming
 - [x] Save colours
+- [ ] Eraser
 - [ ] Fix brush type not working with tools
