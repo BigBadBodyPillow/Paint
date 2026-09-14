@@ -113,14 +113,16 @@
     border-radius: var(--radius) 0 0 var(--radius);
     border-right: 0;
     font-size: var(--font-12);
-    font-weight: 700;
+    /* font-weight: 700; */
     display: flex;
     align-items: center;
+    gap: 1em;
   }
 
   .export-button span {
     color: var(--accent);
     font-size: var(--font-16);
+    margin-top: -0.2em;
   }
 
   .export-webp {
