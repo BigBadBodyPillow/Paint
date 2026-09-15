@@ -13,6 +13,8 @@
     onBrushSizeChange: (size: number) => void;
     onSaveColour: () => void;
     onRemoveSavedColour: (colour: string) => void;
+    collapsed: boolean;
+    onToggleCollapsed: () => void;
   };
 
   let {
@@ -26,7 +28,9 @@
     onColourChange,
     onBrushSizeChange,
     onSaveColour,
-    onRemoveSavedColour
+    onRemoveSavedColour,
+    collapsed,
+    onToggleCollapsed
   }: Props = $props();
 
   const tools: { id: Tool; label: string; icon: string }[] = [
@@ -45,8 +49,16 @@
   const presets = ['#1b1d24', '#ff1938', '#f6b84b', '#64b5a2', '#5b7cfa', '#f3eee3'];
 </script>
 
-<aside class="sidebar">
-  <div class="side-heading"><span>Tools</span></div>
+<aside class:collapsed class="sidebar">
+  <div class="side-heading">
+    <span>Tools</span>
+    <button
+      class="collapse-button"
+      aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      onclick={onToggleCollapsed}>{collapsed ? '›' : '‹'}</button
+    >
+  </div>
   <div class="tool-grid">
     {#each tools as item (item.id)}
       <button
@@ -56,7 +68,7 @@
         aria-label={item.label}
         title={item.label}
       >
-        <span class="tool-icon">{item.icon}</span><span>{item.label}</span>
+        <span class="tool-icon">{item.icon}</span><span class="tool-label">{item.label}</span>
       </button>
     {/each}
   </div>
@@ -143,6 +155,35 @@
     min-height: calc(100vh - 174px);
     display: flex;
     flex-direction: column;
+    transition:
+      width 0.2s ease,
+      padding 0.2s ease;
+  }
+  .sidebar.collapsed {
+    padding-right: 12px;
+  }
+  .sidebar.collapsed .side-heading {
+    justify-content: center;
+  }
+  .sidebar.collapsed .side-heading > span,
+  .sidebar.collapsed .tool-label,
+  .sidebar.collapsed .control-section {
+    display: none;
+  }
+  .collapse-button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    background: var(--background-muted2);
+    font-size: var(--font-18);
+    line-height: 1;
+  }
+  .collapse-button:hover {
+    border-color: var(--text);
   }
   .side-heading,
   .section-label {
@@ -174,6 +215,14 @@
     text-align: left;
     font-size: var(--font-12);
     transition: all 0.2s linear;
+  }
+  .sidebar.collapsed .tool-grid {
+    grid-template-columns: 1fr;
+    margin-top: 17px;
+  }
+  .sidebar.collapsed .tool-button {
+    justify-content: center;
+    padding: 0;
   }
   .tool-button.active {
     background: var(--accent);

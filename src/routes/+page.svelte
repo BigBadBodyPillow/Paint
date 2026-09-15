@@ -19,6 +19,7 @@
   let colour = $state('#ff1938');
   let brushSize = $state(12);
   let savedColours = $state<string[]>([]);
+  let sidebarCollapsed = $state(false);
   let historyIndex = $state(-1);
   let historyLength = $state(0);
 
@@ -58,7 +59,7 @@
 </script>
 
 <svelte:head>
-  <title>Canvas Studio</title>
+  <title>Paint</title>
   <meta name="description" content="Painting / drawing app" />
 </svelte:head>
 
@@ -72,7 +73,7 @@
     onDownload={(format) => canvasController?.downloadCanvas(format)}
   />
 
-  <section class="workspace">
+  <section class:sidebar-collapsed={sidebarCollapsed} class="workspace">
     <Sidebar
       {tool}
       {brush}
@@ -85,6 +86,8 @@
       onBrushSizeChange={(value) => (brushSize = value)}
       onSaveColour={saveColour}
       onRemoveSavedColour={removeSavedColour}
+      collapsed={sidebarCollapsed}
+      onToggleCollapsed={() => (sidebarCollapsed = !sidebarCollapsed)}
     />
     <Canvas
       bind:this={canvasController}
@@ -141,6 +144,9 @@
     margin: 0 auto;
     padding: 38px 3vw 32px;
   }
+  .workspace.sidebar-collapsed {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
 
   .clear-dialog {
     border: 1px solid var(--border);
@@ -188,6 +194,9 @@
       grid-template-columns: 1fr;
       padding: 32px 20px;
       gap: 30px;
+    }
+    .workspace.sidebar-collapsed {
+      grid-template-columns: 1fr;
     }
   }
 

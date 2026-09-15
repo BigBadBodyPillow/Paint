@@ -17,5 +17,7 @@
 - [x] Add clear button
 - [x] Theming
 - [x] Save colours
-- [ ] Eraser
+- [x] Eraser
+- [x] Fix canvas size indicatior
 - [ ] Fix brush type not working with tools
+- [ ] fix callapsible to be horizontal on smaller screen sizes

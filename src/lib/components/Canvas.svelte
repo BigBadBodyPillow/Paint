@@ -31,6 +31,8 @@
   let historyIndex = $state(-1);
   let canvasWidth = $state(1200);
   let canvasHeight = $state(760);
+  let displayedWidth = $state(1200);
+  let displayedHeight = $state(760);
   let cursorPreview = $state<{ x: number; y: number } | null>(null);
   let cursorPreviewSize = $derived(
     brushSize *
@@ -38,11 +40,20 @@
       (brush === 'spray' ? 4.2 : 1)
   );
 
-  onMount(() => resizeCanvas());
+  onMount(() => {
+    resizeCanvas();
+
+    if (!canvasShell) return;
+    const resizeObserver = new ResizeObserver(updateDisplayedSize);
+    resizeObserver.observe(canvasShell);
+
+    return () => resizeObserver.disconnect();
+  });
 
   function resizeCanvas() {
     if (!canvas || !canvasShell) return;
 
+    updateDisplayedSize();
     const rect = canvasShell.getBoundingClientRect();
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const previousCanvas = document.createElement('canvas');
@@ -68,6 +79,14 @@
     history = [context.getImageData(0, 0, canvasWidth, canvasHeight)];
     historyIndex = 0;
     onHistoryChange(historyIndex, history.length);
+  }
+
+  function updateDisplayedSize() {
+    if (!canvasShell) return;
+
+    const rect = canvasShell.getBoundingClientRect();
+    displayedWidth = Math.round(rect.width);
+    displayedHeight = Math.round(rect.height);
   }
 
   function pointFromEvent(event: PointerEvent): Point {
@@ -110,11 +129,13 @@
   function drawStroke(event: PointerEvent) {
     if (!isDrawing || !context || !startPoint) return;
     const point = pointFromEvent(event);
+
     if (tool === 'brush' || tool === 'eraser') drawBrush(startPoint, point);
     else if (shapeOrigin) {
       if (snapshot) context.putImageData(snapshot, 0, 0);
       drawShape(shapeOrigin, point);
     }
+
     if (tool === 'brush' || tool === 'eraser') startPoint = point;
   }
 
@@ -140,11 +161,11 @@
   function prepareStroke() {
     if (!context) return;
 
-    context.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    context.globalCompositeOperation = 'source-over';
     context.lineCap = brush === 'chalk' ? 'butt' : 'round';
     context.lineJoin = 'round';
-    context.strokeStyle = colour;
-    context.fillStyle = colour;
+    context.strokeStyle = tool === 'eraser' ? canvasBackground : colour;
+    context.fillStyle = tool === 'eraser' ? canvasBackground : colour;
     context.lineWidth = brushSize;
     context.globalAlpha = brush === 'chalk' ? 0.46 : 1;
   }
@@ -373,7 +394,7 @@
   </div>
   <div class="canvas-footer">
     <span>{brushSize}px {tool === 'eraser' ? 'eraser' : brush}</span><span class="canvas-size"
-      >{canvasWidth} × {canvasHeight}</span
+      >{displayedWidth} × {displayedHeight}</span
     >
   </div>
 </div>
