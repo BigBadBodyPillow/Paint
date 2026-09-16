@@ -19,5 +19,14 @@
 - [x] Save colours
 - [x] Eraser
 - [x] Fix canvas size indicatior
-- [ ] Fix brush type not working with tools
+- [x] Icons
+- [x] Fix brush type not working with tools
 - [ ] fix callapsible to be horizontal on smaller screen sizes
+
+## Asset Sources
+
+- [Brush Icon](https://icon-sets.iconify.design/fa6-solid/brush/)
+- [Rectangle Icon](https://icon-sets.iconify.design/cil/rectangle/)
+- [Circle Icon](https://icon-sets.iconify.design/akar-icons/circle/)
+- [Fill Icon](https://icon-sets.iconify.design/bxs/color-fill/)
+- [Eraser Icon](https://icon-sets.iconify.design/boxicons/eraser-filled/)

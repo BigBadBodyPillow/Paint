@@ -122,7 +122,6 @@
   .export-button span {
     color: var(--accent);
     font-size: var(--font-16);
-    margin-top: -0.2em;
   }
 
   .export-webp {

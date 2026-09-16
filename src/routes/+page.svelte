@@ -126,7 +126,7 @@
     --disabled: hsl(from var(--text) h s calc(l - 50));
   }
 
-  button {
+  :global(button) {
     font: inherit;
     cursor: pointer;
   }
