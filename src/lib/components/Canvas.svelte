@@ -187,6 +187,7 @@
           1.4
         );
       }
+
       return;
     }
 
@@ -256,6 +257,7 @@
         x += Math.cos(angle) * radius;
         y += Math.sin(angle) * radius;
       }
+
       drawBrush({ x, y }, { x, y });
     }
   }
@@ -306,6 +308,7 @@
         { x: point.x, y: point.y - 1 }
       );
     }
+
     context.putImageData(image, 0, 0);
   }
 
@@ -313,6 +316,7 @@
     const value = Number.parseInt(hex.slice(1), 16);
     return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
   }
+
   function saveHistory() {
     if (!context) return;
     history = [
@@ -349,8 +353,14 @@
   function download(format: 'png' | 'webp') {
     if (!canvas) return;
     const link = document.createElement('a');
-    link.download = `canvas-${new Date().toISOString().slice(0, 10)}.${format}`;
-    link.href = canvas.toDataURL(`image/${format}`, 0.92);
+    link.download = `canvas-${new Date().toISOString().slice(0, 10)}
+  .${format}
+  `;
+    link.href = canvas.toDataURL(
+      `image/${format}
+  `,
+      0.92
+    );
     link.click();
   }
 
@@ -382,20 +392,30 @@
       onpointercancel={endStroke}
       onpointerleave={() => (cursorPreview = null)}
     ></canvas>
-    {#if cursorPreview && tool !== 'fill'}<span
+    {#if cursorPreview && tool !== 'fill'}
+      <span
         class="brush-ghost"
         aria-hidden="true"
-        style={`left: ${cursorPreview.x}px; top: ${cursorPreview.y}px; width: ${cursorPreviewSize}px; height: ${cursorPreviewSize}px`}
+        style={`left: ${cursorPreview.x}
+  px; top: ${cursorPreview.y}
+  px; width: ${cursorPreviewSize}
+  px; height: ${cursorPreviewSize}
+  px`}
       ></span>{/if}
+
     <div class="canvas-corner top-left"></div>
     <div class="canvas-corner top-right"></div>
     <div class="canvas-corner bottom-left"></div>
     <div class="canvas-corner bottom-right"></div>
   </div>
   <div class="canvas-footer">
-    <span>{brushSize}px {tool === 'eraser' ? 'eraser' : brush}</span><span class="canvas-size"
-      >{displayedWidth} × {displayedHeight}</span
-    >
+    <span
+      >{brushSize}
+      px {tool === 'eraser' ? 'eraser' : brush}
+    </span><span class="canvas-size"
+      >{displayedWidth}
+      × {displayedHeight}
+    </span>
   </div>
 </div>
 
@@ -404,6 +424,7 @@
     min-width: 0;
     padding-top: 8px;
   }
+
   .canvas-shell {
     position: relative;
     overflow: hidden;
@@ -415,6 +436,7 @@
     background: var(--background-muted2);
     box-shadow: 0 15px 40px rgba(95, 94, 93, 0.08);
   }
+
   canvas {
     display: block;
     width: 100%;
@@ -422,6 +444,7 @@
     touch-action: none;
     cursor: crosshair;
   }
+
   .brush-ghost {
     position: absolute;
     z-index: 2;
@@ -431,6 +454,7 @@
     background: rgba(6, 6, 6, 0.361);
     pointer-events: none;
   }
+
   .canvas-corner {
     position: absolute;
     width: 13px;
@@ -438,30 +462,35 @@
     pointer-events: none;
     color: var(--accent);
   }
+
   .top-left {
     top: 10px;
     left: 10px;
     border-top: 1px solid;
     border-left: 1px solid;
   }
+
   .top-right {
     top: 10px;
     right: 10px;
     border-top: 1px solid;
     border-right: 1px solid;
   }
+
   .bottom-left {
     bottom: 10px;
     left: 10px;
     border-bottom: 1px solid;
     border-left: 1px solid;
   }
+
   .bottom-right {
     right: 10px;
     bottom: 10px;
     border-right: 1px solid;
     border-bottom: 1px solid;
   }
+
   .canvas-footer {
     display: flex;
     justify-content: space-between;
@@ -472,6 +501,7 @@
     letter-spacing: 0.03em;
     font-variant-numeric: tabular-nums;
   }
+
   .canvas-footer span {
     display: flex;
     align-items: center;
